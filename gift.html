@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jason and Julia's Wrapped</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:ital,wght@1,400&family=Press+Start+2P&family=VT323&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <style>
+        /* --- PERFORMANCE OPTIMIZATIONS --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        .accelerate {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        :root {
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        [data-theme="forest"] {
+            --bg-color: #0f1c18;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --text-main: #e0eadd;
+            --text-muted: #8fa39a;
+            --accent: #a7c4b5;
+            --orb-1: #2d5a45; --orb-2: #1a2f26; --orb-3: #3e6b58;
+            --star-color: #fceabb;
+            --progress-fill: #fff;
+        }
+
+        [data-theme="warm"] {
+            --bg-color: #4a2c2c;
+            --glass-bg: rgba(255, 220, 220, 0.1);
+            --text-main: #ffebd6;
+            --text-muted: #d6a6a6;
+            --accent: #ffb7b2;
+            --orb-1: #8a4b4b; --orb-2: #5c2e2e; --orb-3: #ff9e9e;
+            --star-color: #ffd700;
+            --progress-fill: #ffb7b2;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: var(--bg-color);
+            height: 100vh;
+            color: var(--text-main);
+            overflow: hidden;
+            position: relative;
+            transition: background-color 1s ease;
+        }
+
+        /* --- BACKGROUND LAYERS --- */
+        .bg-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            transform: scale(1.1);
+            z-index: 0; opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+            pointer-events: none;
+            will-change: opacity;
+        }
+        #forest-bg-layer {
+            background-image: url('SadBackground.jpg');
+            filter: blur(5px) brightness(0.5) grayscale(0.3);
+        }
+        #warm-bg-layer {
+            background-image: url('HappyBackground.jpg');
+            filter: blur(5px) brightness(0.6) saturate(1.2);
+        }
+        body[data-theme="forest"] #forest-bg-layer { opacity: 1; }
+        body[data-theme="warm"] #warm-bg-layer { opacity: 1; }
+
+        /* --- MODAL --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2500; display: none; justify-content: center; align-items: center; opacity: 0; will-change: opacity; }
+        .modal-content { max-width: 85%; max-height: 85%; border: 1px solid var(--glass-border); box-shadow: 0 0 50px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; background: black; position: relative; }
+        .modal-content img, .modal-content video { max-width: 100%; max-height: 85vh; object-fit: contain; display: block; }
+        .close-modal { position: absolute; top: 20px; right: 40px; color: white; font-size: 4rem; cursor: pointer; z-index: 2501; font-family: 'DM Sans', sans-serif; line-height: 1; }
+        .close-modal:hover { color: var(--accent); }
+        .modal-nav { position: absolute; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: white; font-size: 3rem; cursor: pointer; padding: 20px; z-index: 2502; opacity: 0.7; transition: opacity 0.2s; }
+        .modal-nav:hover { opacity: 1; text-shadow: 0 0 10px white; }
+        .prev-btn { left: 20px; } .next-btn { right: 20px; }
+
+        /* --- ALBUM OVERLAY --- */
+        #album-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 2000; display: none; flex-direction: column; opacity: 0; will-change: opacity, transform; }
+        .album-header { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); }
+        .album-title h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; }
+        .album-title span { font-size: 0.8rem; color: var(--text-muted); }
+        .close-album-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); padding: 8px 16px; cursor: pointer; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+        .close-album-btn:hover { background: var(--accent); color: var(--bg-color); }
+        .album-grid-container { flex: 1; overflow-y: scroll; padding: 20px; }
+        .album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
+        .grid-item { aspect-ratio: 1 / 1; position: relative; cursor: pointer; overflow: hidden; background: transparent; opacity: 0; will-change: opacity, transform; }
+        .grid-item img, .grid-item video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .grid-item:hover img, .grid-item:hover video { transform: scale(1.1); }
+        .video-indicator { position: absolute; top: 5px; right: 5px; color: white; font-size: 0.8rem; text-shadow: 0 0 5px rgba(0,0,0,0.8); pointer-events: none; }
+
+        /* --- MINECRAFT BOOK UI (FIXED) --- */
+        #book-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2100; display: none; justify-content: center; align-items: center; opacity: 0; will-change: opacity; }
+        
+        .mc-book-wrapper {
+            width: 480px; height: 650px; background-color: #F8F0DA; position: relative;
+            border-right: 12px solid #755938; border-left: 4px solid #C8B68E; border-top: 4px solid #C8B68E; border-bottom: 8px solid #C8B68E;
+            box-shadow: 0 0 0 4px #755938, 15px 15px 0px rgba(0,0,0,0.5);
+            padding: 30px 25px; font-family: 'VT323', monospace; color: #1F1F1F;
+            display: flex; flex-direction: column; image-rendering: pixelated;
+        }
+
+        /* --- CONTENT AREA (SCROLLABLE) --- */
+        .mc-book-page { 
+            flex: 1; /* Takes available space */
+            display: flex; flex-direction: column; gap: 15px; 
+            opacity: 0; transition: opacity 0.3s;
+            overflow-y: auto; /* SCROLL IF TOO LONG */
+            padding-right: 10px; /* Avoid text hitting scrollbar */
+            min-height: 0; /* Crucial for flex child scrolling */
+            
+            /* Custom Scrollbar for Book */
+            scrollbar-width: thin;
+            scrollbar-color: #755938 transparent;
+        }
+        .mc-book-page::-webkit-scrollbar { width: 6px; }
+        .mc-book-page::-webkit-scrollbar-track { background: transparent; }
+        .mc-book-page::-webkit-scrollbar-thumb { background-color: #755938; border-radius: 3px; }
+
+        .mc-title { font-size: 2.2rem; text-align: center; margin-bottom: 10px; font-weight: normal; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
+        .mc-img-frame { width: 100%; height: 250px; border: 2px solid #1F1F1F; background: #dcd0b0; display: flex; justify-content: center; align-items: center; overflow: hidden; margin-bottom: 10px; flex-shrink: 0; }
+        .mc-img-frame img { width: 100%; height: 100%; object-fit: cover; }
+        .mc-text { font-size: 1.4rem; line-height: 1.3; text-align: left; }
+        
+        /* --- CONTROLS (FIXED AT BOTTOM) --- */
+        .mc-controls { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-top: 15px; padding-top: 10px; font-size: 1.2rem; 
+            flex-shrink: 0; /* Prevents shrinking */
+            border-top: 1px dashed rgba(117, 89, 56, 0.3);
+        }
+        .mc-btn-container { text-align: center; margin-top: 5px; flex-shrink: 0; }
+
+        .mc-btn { background-color: #C6C6C6; border-top: 2px solid #FFF; border-left: 2px solid #FFF; border-right: 2px solid #555; border-bottom: 2px solid #555; color: #1F1F1F; font-family: 'VT323'; font-size: 1.5rem; padding: 5px 25px; cursor: pointer; outline: 2px solid #000; margin-top: 5px; }
+        .mc-btn:active { border-top: 2px solid #555; border-left: 2px solid #555; border-right: 2px solid #FFF; border-bottom: 2px solid #FFF; background-color: #8B8B8B; }
+        .mc-arrow { cursor: pointer; font-size: 2rem; user-select: none; color: #1F1F1F; }
+        .mc-arrow:hover { color: #555; transform: scale(1.1); }
+
+        /* --- VINTAGE LETTER UI --- */
+        #letter-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2200; display: none; justify-content: center; align-items: center; opacity: 0; will-change: opacity; }
+        .letter-paper {
+            width: 500px; height: 750px; background-color: #f4e4bc;
+            background-image: repeating-linear-gradient(rgba(168, 150, 126, 0.3) 0px, rgba(168, 150, 126, 0.3) 1px, transparent 1px, transparent 2.5rem);
+            background-size: 100% 2.5rem; border: 1px solid #c8b68e;
+            box-shadow: inset 0 0 40px rgba(168, 150, 126, 0.2), 10px 10px 20px rgba(0,0,0,0.4), 0 0 0 5px #f0dec5, 1px 1px 1px 6px rgba(121, 103, 82, 0.4);
+            border-radius: 3px; display: flex; flex-direction: column; padding: 4rem 3rem 2rem 4rem; position: relative; transform: rotate(-1deg) scale(0.95);
+        }
+        .letter-content { font-family: 'Caveat', cursive; font-size: 2rem; line-height: 2.5rem; color: #4a3c2c; margin-top: 0px; text-shadow: 1px 1px 0px rgba(0,0,0,0.05); overflow-y: auto; flex: 1; padding-right: 15px; scrollbar-width: thin; scrollbar-color: #c8b68e transparent; }
+        .letter-content::-webkit-scrollbar { width: 6px; }
+        .letter-content::-webkit-scrollbar-track { background: transparent; }
+        .letter-content::-webkit-scrollbar-thumb { background-color: #c8b68e; border-radius: 3px; }
+        .close-letter { position: absolute; top: 15px; right: 15px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: bold; background: transparent; border: none; cursor: pointer; color: #8c7b65; text-transform: uppercase; letter-spacing: 1px; z-index: 10; }
+        .close-letter:hover { color: #4a3c2c; }
+
+        /* --- APPLE WIDGET STYLE --- */
+        .apple-widget-container { cursor: pointer; text-align: left; width: 100%; }
+        .apple-stack { width: 100%; aspect-ratio: 1/1; position: relative; margin-bottom: 15px; }
+        .stack-layer { position: absolute; width: 100%; height: 100%; background: #333; border: 1px solid var(--glass-border); transition: transform 0.3s ease; }
+        .stack-1 { top: 0; left: 0; z-index: 3; overflow: hidden; }
+        .stack-2 { top: -6px; left: 0; z-index: 2; transform: scale(0.95); opacity: 0.7; }
+        .stack-3 { top: -12px; left: 0; z-index: 1; transform: scale(0.90); opacity: 0.5; }
+        .apple-widget-container:hover .stack-1 { transform: translateY(-5px); }
+        .apple-widget-container:hover .stack-2 { transform: translateY(-5px) scale(0.95); }
+        .apple-widget-container:hover .stack-3 { transform: translateY(-5px) scale(0.90); }
+        .album-label { font-size: 1.2rem; font-weight: bold; margin-bottom: 2px; }
+        .album-count { font-size: 0.9rem; color: var(--text-muted); }
+
+        /* --- RETRO LANDING --- */
+        #landing-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #222; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Press Start 2P', cursive; color: #ddd; text-align: center; }
+        #landing-screen::before { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); z-index: 2; background-size: 100% 2px, 3px 100%; pointer-events: none; }
+        .retro-title { font-size: 2rem; margin-bottom: 40px; color: #0f0; text-shadow: 2px 2px #003300; line-height: 1.5; }
+        .retro-btn-container { display: flex; gap: 30px; z-index: 10; }
+        .retro-btn { background: #444; border: 4px solid #fff; color: #fff; padding: 15px 20px; font-family: 'Press Start 2P', cursive; font-size: 0.7rem; cursor: pointer; box-shadow: 5px 5px 0px #000; }
+        
+        /* --- BACKGROUND DECOR --- */
+        .bg-orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; z-index: 1; pointer-events: none; transition: background 1s ease; will-change: transform; }
+        .orb-1 { width: 400px; height: 400px; background: var(--orb-1); top: -100px; left: -100px; }
+        .orb-2 { width: 500px; height: 500px; background: var(--orb-2); bottom: -150px; right: -150px; }
+        .orb-3 { width: 300px; height: 300px; background: var(--orb-3); top: 40%; left: 60%; opacity: 0.2; }
+        #star-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+        .floating-star { position: absolute; width: 60px; height: 60px; cursor: pointer; pointer-events: auto; filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3)); transition: filter 0.3s; display: flex; align-items: center; justify-content: center; }
+        .star-svg { width: 100%; height: 100%; fill: var(--star-color); stroke: #000; stroke-width: 1px; overflow: visible; transition: fill 1s ease; }
+        .particle { position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; pointer-events: none; z-index: 6; }
+
+        /* --- SCENE LAYOUT --- */
+        .scene-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; opacity: 0; transition: opacity 1s ease; z-index: 10; will-change: opacity; }
+        .scene-container.active-scene { display: flex; opacity: 1; }
+        #forest-container { flex-direction: row; }
+        #warm-container { flex-direction: row-reverse; }
+        .dashboard { width: 300px; height: 100%; flex-shrink: 0; background: rgba(0, 0, 0, 0.3); border-right: 1px solid var(--glass-border); padding: 2rem; display: flex; flex-direction: column; justify-content: center; backdrop-filter: blur(10px); transition: opacity 0.5s; }
+        #warm-container .dashboard { border-right: none; border-left: 1px solid var(--glass-border); }
+        .dash-header h1 { font-family: 'Playfair Display', serif; font-style: italic; font-size: 2rem; margin-bottom: 0.5rem; }
+        .dash-header p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+        .chapter-list { list-style: none; }
+        .chapter-item { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; opacity: 0.6; }
+        .chapter-item:hover, .chapter-item.active { background: var(--glass-bg); opacity: 1; }
+        .return-btn { margin-top: 40px; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 10px; cursor: pointer; font-size: 0.8rem; opacity: 0.7; transition: all 0.3s; }
+        .return-btn:hover { opacity: 1; background: var(--glass-bg); }
+        .stage { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+        .story-container { width: 400px; height: 750px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 0px; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column; backdrop-filter: blur(20px); }
+        .progress-container { display: flex; gap: 5px; padding: 15px; position: absolute; top: 0; left: 0; width: 100%; z-index: 10; }
+        .progress-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 0; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--progress-fill); width: 0%; transition: width 0.3s linear; }
+        .progress-bar.completed .progress-fill { width: 100%; } .progress-bar.active .progress-fill { width: 100%; }
+        .slide { flex: 1; padding: 40px 20px; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .slide.active { display: flex; }
+        h2 { font-size: 1.8rem; margin-bottom: 1rem; font-weight: 700; letter-spacing: -0.5px; }
+        .slide-text { font-size: 1rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 2rem; }
+        
+        .photo-frame { width: 100%; background: #000; border-radius: 0; overflow: hidden; position: relative; margin-bottom: 20px; border: 1px solid var(--glass-border); }
+        .photo-frame img, .photo-frame video { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+        .spotify-frame { width: 100%; height: 400px; border: 1px solid var(--glass-border); margin-bottom: 20px; }
+        .nav-controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: center; gap: 20px; }
+        .nav-btn { background: var(--glass-bg); border: 1px solid var(--glass-border); color: white; padding: 12px 24px; border-radius: 0; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .nav-btn:hover { background: rgba(255,255,255,0.2); }
+        .scrollable-album { width: 100%; height: 350px; overflow-y: auto; padding-right: 5px; margin-bottom: 20px; scrollbar-width: thin; scrollbar-color: var(--accent) var(--glass-bg); }
+        .scrollable-album::-webkit-scrollbar { width: 4px; }
+        .scrollable-album::-webkit-scrollbar-track { background: var(--glass-bg); }
+        .scrollable-album::-webkit-scrollbar-thumb { background: var(--accent); }
+        .flashcard-container { width: 300px; height: 400px; perspective: 1000px; cursor: pointer; margin-bottom: 20px; }
+        .flashcard { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .flashcard.is-flipped { transform: rotateY(180deg); }
+        .flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 0px; border: 1px solid var(--glass-border); background: var(--glass-bg); display: flex; align-items: center; justify-content: center; }
+        .flashcard-back { transform: rotateY(180deg); }
+        .flashcard .photo-frame { margin-bottom: 0; height: 100%; border: none; }
+
+        /* --- GAME CANVAS --- */
+        canvas#flappy-canvas { background: #70c5ce; border: 2px solid white; display: block; image-rendering: pixelated; }
+        #game-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); z-index: 10; pointer-events: none; }
+        .game-msg { font-family: 'Press Start 2P', cursive; color: white; font-size: 1.2rem; text-align: center; line-height: 1.5; text-shadow: 2px 2px #000; }
+        
+        /* LOCK IN WARNING */
+        #lock-warning {
+            color: #ff4444; font-family: 'Press Start 2P'; font-size: 0.7rem; 
+            margin-bottom: 10px; animation: blink 1s infinite;
+        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* --- SURPRISE POPUP --- */
+        #surprise-msg {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 3rem; 
+            color: #ffd700;
+            text-shadow: 4px 4px 0px #000000; 
+            z-index: 2000; pointer-events: none; 
+            text-align: center;
+            width: 100%;
+        }
+        .falling-star {
+            position: absolute; top: -50px; width: 20px; height: 20px;
+            background: #ffd700; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            z-index: 1500; pointer-events: none;
+        }
+    </style>
+</head>
+<body data-theme="retro">
+
+    <div id="warm-bg-layer" class="bg-layer"></div>
+    <div id="forest-bg-layer" class="bg-layer"></div>
+
+    <div id="media-modal" class="modal-overlay" onclick="closeModal()">
+        <span class="close-modal">×</span>
+        <button class="modal-nav prev-btn" onclick="event.stopPropagation(); changeMedia(-1)">❮</button>
+        <button class="modal-nav next-btn" onclick="event.stopPropagation(); changeMedia(1)">❯</button>
+        <div class="modal-content" onclick="event.stopPropagation()"></div>
+    </div>
+
+    <div id="book-overlay">
+        <div class="mc-book-wrapper">
+            <div class="mc-book-page" id="book-content"></div>
+            
+            <div class="mc-controls">
+                <div class="mc-arrow" onclick="changeBookPage(-1)">❮</div>
+                <div class="mc-page-num" id="book-page-num">1/6</div>
+                <div class="mc-arrow" onclick="changeBookPage(1)">❯</div>
+            </div>
+            
+            <div class="mc-btn-container">
+                <button class="mc-btn" onclick="closeBook()">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="letter-overlay">
+        <div class="letter-paper">
+            <button class="close-letter" onclick="closeLetter()">Close Letter</button>
+            <div class="letter-content">
+                <p>
+                    Dear My Precious Moon,<br><br>
+                    Hi baby! I just wanted to write this to let you know how much I appreciate you. I’m sure I haven’t said this nearly as much as I should have this year, but I really appreciate all the little things you do for me, drying my hair, cooking for me, moisturizing my hands and skin, always, always looking out for my health in any way that you can, and even holding up my hair when I wash my face.
+
+                    I don’t want to sound cliché or act like those cringey people that say, “They even care about the little things!” but I genuinely feel the care you give for me in my heart. I never knew someone could care for me to that extent, but feeling your love makes me so happy. I feel comfortable with you, and I feel loved. It’s strange, but you give me feelings that I thought I could only ever feel with family.
+
+                    To be honest, towards the beginning of our little break, I really thought there was no possible future between us. I rarely communicated with you, and it seemed like I was pushing you away. I think we were both in a really dark place. I felt so sad and empty, and I felt like I was just a lost cause.
+
+                    But things started to change a lot once we met up again. I still have a really hard time understanding my emotions because I’ve neglected them for a long time, but you help me understand them better. You always say that you don’t feel like you’re helping me, but I feel like this year was a prime example of me receiving such a large amount of help from you.
+
+                    I feel more emotionally in tune with myself, and I feel like, with every day that passes, I understand my emotions and myself more. I never truly realized how closed off I was until we started talking, baby. You’ve taken me out of such a dark and quiet cave, and you’ve made me feel loved. I feel so lucky to be with you, and I can’t help but cry as I write this.
+
+                    Realistically, I know we aren’t exactly perfect for each other, but I don’t think that matters. The fact that we’re trying to help each other is more beautiful than us being perfect, and in the end, I’d rather be in a relationship where we work on improving together than being in one that’s perfect. You’re worth changing for, Julia.
+
+                    Through all the problems we’ve had, I feel like you’ve helped me get so much better. I’m so thankful for you, and I’m so thankful for us, because I now see a future where I’m so happy with you. I want to tell you more of my feelings, and I want to give you everything you could ever want.
+
+                    You make me feel like the person I really want to be. You make me comfortable. You make me feel more like me. Like I said earlier, I really don’t think I could ever thank you enough for all that you’ve done for me, and I don’t think this little thing I made for you could even express a fraction of my love for you.
+
+                    I really do love you so, so incredibly much, Julia. I loved you the day I met you, I love you today, and I will love you for the rest of my life. Loving you was the easiest choice I’ve ever made. Thank you for everything.<br><br>
+                    Love,<br>
+                    Your Sun
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="album-overlay">
+        <div class="album-header">
+            <div class="album-title">
+                <h3 id="overlay-title">Favorites</h3>
+                <span id="overlay-count">0 Items</span>
+            </div>
+            <button class="close-album-btn anim-btn" onclick="closeAlbum()">Close Album</button>
+        </div>
+        <div class="album-grid-container">
+            <div class="album-grid" id="dynamic-gallery"></div>
+        </div>
+    </div>
+
+    <div id="surprise-msg">Surprise!!!</div>
+
+    <div id="landing-screen">
+        <div class="retro-title">SELECT<br>YOUR MOOD</div>
+        <div class="retro-btn-container">
+            <button class="retro-btn anim-btn" onclick="enterExperience('forest')">CUTE</button>
+            <button class="retro-btn anim-btn" onclick="enterExperience('warm')">SILLY</button>
+        </div>
+        <p style="margin-top: 30px; font-size: 0.6rem; opacity: 0.6;">© 2005 JULIA LOVER CORP</p>
+    </div>
+
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+    <div id="star-layer"></div>
+
+    <div id="forest-container" class="scene-container">
+        <div class="dashboard">
+            <div class="dash-header"><h1>부드러운</h1><p>Jason & Julia Wrapped 2025</p></div>
+            <ul class="chapter-list">
+                <li class="chapter-item active" onclick="goToSlide('forest', 0)"><span>01</span> <span>Love</span></li>
+                <li class="chapter-item" onclick="goToSlide('forest', 1)"><span>02</span> <span>Another Playlist For You</span></li>
+                <li class="chapter-item" onclick="goToSlide('forest', 2)"><span>03</span> <span>Recap</span></li>
+                <li class="chapter-item" onclick="goToSlide('forest', 3)"><span>04</span> <span>Our Cuter Memories</span></li>
+                <li class="chapter-item" onclick="goToSlide('forest', 4)"><span>05</span> <span>Our Favorite Games!</span></li>
+                <li class="chapter-item" onclick="goToSlide('forest', 5)"><span>06</span> <span>I Really Do Love You</span></li>
+            </ul>
+            <button class="return-btn anim-btn" onclick="returnToLanding()">← EXIT TO MENU</button>
+        </div>
+        <div class="stage">
+            <div class="story-container">
+                <div class="progress-container">
+                    <div class="progress-bar" id="forest-bar-0"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="forest-bar-1"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="forest-bar-2"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="forest-bar-3"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="forest-bar-4"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="forest-bar-5"><div class="progress-fill"></div></div>
+                </div>
+                
+                <div class="slide active" id="forest-slide-0">
+                    <h2>I love you!</h2>
+                    <div class="photo-frame" style="height: 400px;"><img src="Cute.JPEG" alt="Forest Cover"></div>
+                    <p class="slide-text">Ready to look back at the quiet moments?</p>
+                    <button class="nav-btn anim-btn" onclick="nextSlide('forest')">Play</button>
+                </div>
+                
+                <div class="slide" id="forest-slide-1">
+                    <p class="slide-text">Some sadder music that really REALLY REALLY reminds me of us...</p>
+                    <div class="spotify-frame">
+                        <iframe data-testid="embed-iframe" style="border-radius:0px" src="https://open.spotify.com/embed/playlist/47PbON6QWsm7pmPw54v5lg?utm_source=generator&theme=0" width="100%" height="100%" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                    </div>
+                </div>
+                <div class="slide" id="forest-slide-2">
+                    <h2>The Recap</h2>
+                    <div class="photo-frame"><img src="Silly.jpg" alt="Forest Photo"></div>
+                    <p class="slide-text">This year was most likely one of our heaviest and hardest ones. The lows were pretty low, but there were so many highs and so much growth that we went through together. I'm really proud of us and I want us to constantly love each other and work together because I feel like both of us really deserve each other. </p>
+                </div>
+                
+                <div class="slide" id="forest-slide-3">
+                    <h2>Our Cutest<br>Memories</h2>
+                    <div class="apple-widget-container anim-btn" onclick="openAlbum('forest')">
+                        <div class="apple-stack">
+                            <div class="stack-layer stack-1"><img src="1 (4).jpeg" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1448375240586-dfd8d395ea6c?q=80&w=2070&auto=format&fit=crop'"></div>
+                            <div class="stack-layer stack-2"></div>
+                            <div class="stack-layer stack-3"></div>
+                        </div>
+                        <div class="album-label">Memories</div>
+                        <div class="album-count">42 Items</div>
+                    </div>
+                </div>
+
+                <div class="slide" id="forest-slide-4">
+                    <h2>Some of our Most Played Games!</h2>
+                    <p class="slide-text">We played a LOT of games this year...</p>
+                    <div class="anim-btn" onclick="openBook()" style="cursor: pointer; margin-top: 20px;">
+                        <img src="https://minecraft.wiki/images/Book_JE2_BE2.png" style="width: 100px; height: auto; image-rendering: pixelated; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));">
+                    </div>
+                </div>
+
+                <div class="slide" id="forest-slide-5">
+                    <h2>A Lover Letter to you</h2>
+                    <p class="slide-text">I love you with all of my heart, Julia</p>
+                    <div class="anim-btn" onclick="openLetter()" style="cursor: pointer; margin-top: 30px;">
+                        <img src="https://minecraft.wiki/images/Enchanted_Book.gif" style="width: 120px; height: auto; image-rendering: pixelated; filter: drop-shadow(0 0 15px gold);">
+                    </div>
+                </div>
+
+                <div class="nav-controls"><button class="nav-btn anim-btn" onclick="nextSlide('forest')">Next ⏭</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="warm-container" class="scene-container">
+        <div id="warm-dashboard" class="dashboard">
+            <div class="dash-header"><h1>我爱你</h1><p>Jason & Julia Wrapped 2025</p></div>
+            <ul class="chapter-list">
+                <li class="chapter-item active" onclick="goToSlide('warm', 0)"><span>01</span> <span>San Jose Friends?</span></li>
+                <li class="chapter-item" onclick="goToSlide('warm', 1)"><span>02</span> <span>Playlist For You!</span></li>
+                <li class="chapter-item" onclick="goToSlide('warm', 2)"><span>03</span> <span>Our Moments</span></li>
+                <li class="chapter-item" onclick="goToSlide('warm', 3)"><span>04</span> <span>hm??</span></li>
+                <li class="chapter-item" onclick="goToSlide('warm', 4)"><span>05</span> <span>My Life ;-;</span></li>
+                <li class="chapter-item" onclick="goToSlide('warm', 5)"><span>06</span> <span>Derp</span></li>
+            </ul>
+            <button id="warm-return-btn" class="return-btn anim-btn" onclick="returnToLanding()">← EXIT TO MENU</button>
+        </div>
+        <div class="stage">
+            <div class="story-container">
+                <div class="progress-container">
+                    <div class="progress-bar" id="warm-bar-0"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="warm-bar-1"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="warm-bar-2"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="warm-bar-3"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="warm-bar-4"><div class="progress-fill"></div></div>
+                    <div class="progress-bar" id="warm-bar-5"><div class="progress-fill"></div></div>
+                </div>
+                
+                <div class="slide active" id="warm-slide-0">
+                    <h2>Hello...</h2>
+                    <div class="photo-frame" style="height: 400px;"><img src="Scary.JPG" alt="Warm Cover"></div>
+                    <p class="slide-text">Ready for the happy memories?</p>
+                    <button class="nav-btn anim-btn" onclick="nextSlide('warm')">Let's Go!</button>
+                </div>
+                
+                <div class="slide" id="warm-slide-1">
+                    <p class="slide-text">Some Happy music that really REALLY reminds me of you...</p>
+                    <div class="spotify-frame">
+                        <iframe data-testid="embed-iframe" style="border-radius:0px" src="https://open.spotify.com/embed/playlist/2lGzh9GqWaT6EqLk7ySQg4?utm_source=generator" width="100%" height="100%" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                    </div>
+                </div>
+                
+                <div class="slide" id="warm-slide-2">
+                    <h2>This year was...<br>Unforgettable</h2>
+                    <div class="apple-widget-container anim-btn" onclick="openAlbum('warm')">
+                        <div class="apple-stack">
+                            <div class="stack-layer stack-1"><img src="IMG_8681.JPEG" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1535446809272-973039755b5e?q=80&w=2070&auto=format&fit=crop'"></div>
+                            <div class="stack-layer stack-2"></div>
+                            <div class="stack-layer stack-3"></div>
+                        </div>
+                        <div class="album-label">Recents</div>
+                        <div class="album-count">48 Items</div>
+                    </div>
+                </div>
+                
+                <div class="slide" id="warm-slide-3">
+                    <h2>hm, I wonder what's behind this?</h2>
+                    <div class="flashcard-container anim-btn" onclick="flipCard(this)">
+                        <div class="flashcard">
+                            <div class="flashcard-front">
+                                <span style="font-family: 'Playfair Display', serif; font-size: 8rem; color: var(--accent); font-style: italic;">?</span>
+                            </div>
+                            <div class="flashcard-back">
+                                <div class="photo-frame">
+                                    <img src="NoGame.jpg" style="width:100%; height:100%; object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1621786041422-7b670d5e4182?q=80&w=1974&auto=format&fit=crop'">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="slide" id="warm-slide-4">
+                    <h2>GET TROLLED 0-0</h2>
+                    <div id="lock-warning">⚠ SYSTEM LOCKED: SCORE 30 TO ESCAPE ⚠</div>
+                    <div style="position: relative; width: 320px; height: 480px; margin: 0 auto; border: 4px solid white;">
+                        <canvas id="flappy-canvas" width="320" height="480"></canvas>
+                        <div id="game-overlay">
+                            <div class="game-msg">PRESS SPACE<br>TO JUMP</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide" id="warm-slide-5">
+                    <h2 style="font-family: 'Press Start 2P'; color: #ffd700; line-height: 1.5; font-size: 1.5rem;">CONGRATULATIONS<br>YOU'RE DONE</h2>
+                    <div class="photo-frame" style="border: none; background: transparent; height: 300px; width: 300px; margin: 30px 0;">
+                        <img src="CatGif.gif" style="object-fit: contain; width: 100%; height: 100%;" onerror="this.style.display='none'">
+                    </div>
+                    <p class="slide-text" style="font-size: 1.2rem; margin-top: 20px; font-weight: bold; color: var(--text-main);">MERRY CHRISTMAS MY BABY ❤️</p>
+                </div>
+
+                <div id="warm-nav-controls" class="nav-controls"><button class="nav-btn anim-btn" onclick="nextSlide('warm')">Next ⏭</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CACHED ELEMENTS ---
+        const landingScreen = document.getElementById('landing-screen');
+        const forestCont = document.getElementById('forest-container');
+        const warmCont = document.getElementById('warm-container');
+        const albumOverlay = document.getElementById('album-overlay');
+        const mediaModal = document.getElementById('media-modal');
+        const modalContent = document.querySelector('.modal-content');
+        const gallery = document.getElementById('dynamic-gallery');
+
+        let isTransitioning = false; // Flag to prevent rapid clicks
+        let forestState = { currentSlide: 0, totalSlides: 6 }; // Increased to 6 for the Letter
+        let warmState = { currentSlide: 0, totalSlides: 6 };
+
+        // --- BUTTON PHYSICS & ANIMATIONS ---
+        const buttons = document.querySelectorAll('.anim-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('mouseenter', () => { gsap.to(btn, { scale: 1.1, duration: 0.3, ease: "elastic.out(1, 0.3)" }); });
+            btn.addEventListener('mouseleave', () => { gsap.to(btn, { scale: 1, duration: 0.2 }); });
+            btn.addEventListener('mousedown', () => { gsap.to(btn, { scale: 0.95, duration: 0.1 }); });
+            btn.addEventListener('mouseup', () => { gsap.to(btn, { scale: 1.1, duration: 0.1 }); });
+        });
+
+        gsap.to(".orb-1", { x: 50, y: 50, duration: 8, repeat: -1, yoyo: true, ease: "sine.inOut" });
+        gsap.to(".orb-2", { x: -30, y: -40, duration: 10, repeat: -1, yoyo: true, ease: "sine.inOut" });
+        gsap.to(".orb-3", { x: -20, y: 20, scale: 1.2, duration: 12, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+        // --- BOOK JOURNAL LOGIC ---
+        let currentBookPage = 0;
+        const bookEntries = [
+            {
+                title: "Valorant",
+                text: "We won't really talk about this one, might strike a bit of a nerve",
+                image: "RealPhoenix.jpg"
+            },
+            {
+                title: "Sky",
+                text: "A really cute game that we should have honestly played a bit more of (just a bit boring sorry) but definitely the most relaxing game we've played",
+                image: "unnamed.jpg"
+            },
+            {
+                title: "Blade Ball",
+                text: "...",
+                image: "noFilter.jpg"
+            },
+            {
+                title: "The Forge",
+                text: "A game we just started playing. It isn't too bad, but definitely not one of our GOATs",
+                image: "Forge.jpg"
+        
+            },
+            {
+                title: "Dragon Adventures",
+                text: "We played this game when I was probably the happiest I've ever been in my life. I think the game was honestly really fun and I want to play it more (this season is a bit confusing tho... maybe next season) Still my favorite game of the year",
+                image: "Derp.jpg"
+            },
+            {
+                title: "Minecraft",
+                text: "Honestly some of my best memories with you is on this game. I really like the different mods we can play and all the stuff that we've done and built together. Those late nights playing this game with you will probably always be in my memory for the rest of my life. Let's play whenever we get the chance!!",
+                image: "Calm.jpg" // Placeholder
+            },
+            {
+                title: "Brawl Stars",
+                text: "I think we both have a bit of a love-hate relationship in this game. Our teammates are probably the worst creatures on the Earth, but the game is still really fun. There isn't much else to say about this game, but I'm really glad we've played so much of it together because it's really fun to play with you. I also feel like we're a bit goated on it so ;-;",
+                image: "Baby.jpg"
+            }
+        ];
+
+        function openBook() {
+            const overlay = document.getElementById('book-overlay');
+            overlay.style.display = 'flex';
+            gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+            currentBookPage = 0;
+            renderBookPage();
+        }
+
+        function closeBook() {
+            const overlay = document.getElementById('book-overlay');
+            gsap.to(overlay, { opacity: 0, duration: 0.3, onComplete: () => { overlay.style.display = 'none'; }});
+        }
+
+        function changeBookPage(dir) {
+            currentBookPage += dir;
+            if(currentBookPage < 0) currentBookPage = bookEntries.length - 1;
+            if(currentBookPage >= bookEntries.length) currentBookPage = 0;
+            
+            // Fade out current page content
+            gsap.to("#book-content", { opacity: 0, duration: 0.2, onComplete: () => {
+                renderBookPage();
+            }});
+        }
+
+        function renderBookPage() {
+            const entry = bookEntries[currentBookPage];
+            const contentDiv = document.getElementById('book-content');
+            const pageNum = document.getElementById('book-page-num');
+            
+            contentDiv.innerHTML = `
+                <div class="mc-title">${entry.title}</div>
+                <div class="mc-img-frame"><img src="${entry.image}"></div>
+                <div class="mc-text">${entry.text}</div>
+            `;
+            pageNum.innerText = `${currentBookPage + 1}/${bookEntries.length}`;
+            
+            // Fade in
+            gsap.to("#book-content", { opacity: 1, duration: 0.3 });
+        }
+
+        // --- LOVE LETTER LOGIC ---
+        function openLetter() {
+            const overlay = document.getElementById('letter-overlay');
+            overlay.style.display = 'flex';
+            gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.5 });
+            gsap.fromTo('.letter-paper', { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, delay: 0.1, ease: 'back.out(1.2)' });
+        }
+
+        function closeLetter() {
+            const overlay = document.getElementById('letter-overlay');
+            gsap.to(overlay, { opacity: 0, duration: 0.3, onComplete: () => { overlay.style.display = 'none'; }});
+        }
+
+        // --- MEDIA MODAL ---
+        let currentModalIndex = 0;
+        let currentActiveGallery = []; 
+
+        function expandMedia(index) {
+            currentModalIndex = index;
+            mediaModal.style.display = 'flex';
+            gsap.to(mediaModal, { opacity: 1, duration: 0.3 });
+            updateModalContent();
+        }
+
+        function updateModalContent() {
+            modalContent.innerHTML = '';
+            if (!currentActiveGallery || currentActiveGallery.length === 0) return;
+            const item = currentActiveGallery[currentModalIndex];
+            if(item.type === 'image') {
+                const img = document.createElement('img'); img.src = item.src; modalContent.appendChild(img);
+            } else if (item.type === 'video') {
+                const vid = document.createElement('video'); vid.src = item.src; vid.controls = true; vid.autoplay = true; modalContent.appendChild(vid);
+            }
+        }
+
+        function changeMedia(direction) {
+            if (!currentActiveGallery || currentActiveGallery.length === 0) return;
+            currentModalIndex += direction;
+            if (currentModalIndex < 0) currentModalIndex = currentActiveGallery.length - 1;
+            if (currentModalIndex >= currentActiveGallery.length) currentModalIndex = 0;
+            updateModalContent();
+        }
+
+        function closeModal() {
+            gsap.to(mediaModal, { opacity: 0, duration: 0.3, onComplete: () => { mediaModal.style.display = 'none'; modalContent.innerHTML = ''; }});
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (mediaModal.style.display === 'flex') {
+                if (e.key === 'ArrowRight') changeMedia(1);
+                if (e.key === 'ArrowLeft') changeMedia(-1);
+                if (e.key === 'Escape') closeModal();
+            }
+        });
+
+        // --- ALBUM LOGIC ---
+        const warmGalleryItems = [];
+        const forestGalleryItems = [];
+
+        // POPULATE WARM MEDIA
+        const warmVideos = ["lp_image.mp4", "lp_image-1.mp4", "72870ae078c54c3e9db36ab02d1c254b.mp4", "IMG_0969.mp4", "IMG_1032.mp4", "IMG_1049.mp4", "IMG_1145.mp4", "IMG_1189.mp4", "IMG_1203.mp4", "IMG_1204.mp4", "IMG_1629.mp4", "IMG_1724.mp4", "IMG_1845.mp4", "IMG_1908.mp4", "IMG_2456.mp4", "IMG_7548.mp4", "IMG_7556.mp4", "IMG_8656.mp4"];
+        warmVideos.forEach(filename => { warmGalleryItems.push({ type: 'video', src: filename }); });
+        
+        const warmPhotos = ["IMG_0922.JPEG", "IMG_0931.JPEG", "IMG_0955.JPEG", "IMG_0961.JPEG", "IMG_0965.JPEG", "IMG_0999.JPEG", "IMG_1165.JPEG", "IMG_1178.JPEG", "IMG_1320.JPEG", "IMG_1327.JPEG", "IMG_1351.JPEG", "IMG_1366.JPEG", "IMG_1383.JPEG", "IMG_1731.JPEG", "IMG_1974.JPEG", "IMG_4838.JPEG", "IMG_7486.JPEG", "IMG_7510.JPEG", "IMG_7536.JPEG", "IMG_7619.JPEG", "IMG_8557.JPEG", "IMG_8571.JPG", "IMG_8609.JPEG", "IMG_8647.JPEG", "IMG_8651.JPEG", "IMG_8659.JPEG", "IMG_8681.JPEG", "IMG_8742.JPEG", "IMG_8771.JPEG", "IMG_8852.JPEG"];
+        warmPhotos.forEach(filename => { warmGalleryItems.push({ type: 'image', src: filename }); });
+
+        // POPULATE FOREST MEDIA (SAD SIDE)
+        const forestFilenames = [
+            "1 (1).jpeg", "1 (1).jpeg", "1 (1).jpeg", 
+            "1 (2).jpeg", "1 (2).jpeg",
+            "1 (3).jpeg", "1 (4).jpeg", "1 (5).jpeg", "1 (6).jpeg", "1 (7).jpeg", "1 (8).jpeg", "1 (9).jpeg",
+            "1 (10).jpeg", "1 (11).jpeg", "1 (12).jpeg", "1 (13).jpeg", "1 (14).jpeg", "1 (15).jpeg", "1 (16).jpeg",
+            "1 (17).jpeg", "1 (18).jpeg", "1 (19).jpeg", "1 (20).jpeg", "1 (21).jpeg", "1 (22).jpeg",
+            "1 (23).jpeg", "1 (24).jpeg", "1 (25).jpeg", "1 (26).jpeg", "1 (27).jpeg", "1 (28).jpeg", "1 (29).jpeg",
+            "1 (30).jpeg", "1 (31).jpeg", "1 (32).jpeg", "1 (33).jpeg", "1 (34).jpeg", "1 (35).jpeg", "1 (36).jpeg",
+            "1 (37).jpeg", "1 (38).jpeg", "1 (39).jpeg"
+        ];
+        forestFilenames.forEach(filename => {
+            forestGalleryItems.push({ type: 'image', src: filename });
+        });
+
+        function shuffle(array) {
+            let arrCopy = [...array];
+            for (let i = arrCopy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arrCopy[i], arrCopy[j]] = [arrCopy[j], arrCopy[i]];
+            }
+            return arrCopy;
+        }
+
+        function openAlbum(type) {
+            gallery.innerHTML = '';
+            
+            let itemsToLoad = [];
+            if(type === 'forest') {
+                itemsToLoad = forestGalleryItems;
+                document.getElementById('overlay-title').innerText = "Reflections";
+                document.getElementById('overlay-count').innerText = "42 Items";
+            } else {
+                itemsToLoad = warmGalleryItems;
+                document.getElementById('overlay-title').innerText = "Recents";
+                document.getElementById('overlay-count').innerText = "48 Items";
+            }
+
+            currentActiveGallery = shuffle(itemsToLoad);
+
+            currentActiveGallery.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'grid-item';
+                if(item.type === 'image') {
+                    div.innerHTML = `<img src="${item.src}" onclick="expandMedia(${index})" loading="lazy" onerror="this.parentElement.remove()">`;
+                } else {
+                    div.innerHTML = `<div class="video-indicator">▶</div><video src="${item.src}#t=0.1" preload="auto" muted playsinline onloadeddata="this.currentTime=0.1" onclick="expandMedia(${index})" onerror="this.parentElement.remove()"></video>`;
+                }
+                gallery.appendChild(div);
+            });
+
+            albumOverlay.style.display = 'flex';
+            gsap.fromTo(albumOverlay, { opacity: 0, scale: 0.95, backdropFilter: 'blur(0px)' }, { opacity: 1, scale: 1, backdropFilter: 'blur(20px)', duration: 0.6, ease: "expo.out" });
+            gsap.fromTo(".grid-item", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.05, delay: 0.2, ease: "back.out(1.2)" });
+        }
+
+        function closeAlbum() {
+            gsap.to(albumOverlay, { opacity: 0, scale: 0.95, duration: 0.5, ease: "power3.in", onComplete: () => { albumOverlay.style.display = 'none'; }});
+        }
+
+        // --- SURPRISE ---
+        let hasFlippedCard = false;
+        function flipCard(container) {
+            const card = container.querySelector('.flashcard');
+            card.classList.toggle('is-flipped');
+            if (!hasFlippedCard && card.classList.contains('is-flipped')) {
+                hasFlippedCard = true;
+                triggerSurprise();
+            }
+        }
+        function triggerSurprise() {
+            const msg = document.getElementById('surprise-msg');
+            gsap.to(msg, { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" });
+            gsap.to(msg, { scale: 0, opacity: 0, duration: 0.5, delay: 2.5, ease: "power2.in" });
+            for(let i=0; i<30; i++) { createFallingStar(); }
+        }
+        function createFallingStar() {
+            const star = document.createElement('div');
+            star.classList.add('falling-star');
+            star.style.left = Math.random() * 100 + 'vw';
+            const colors = ['#ffd700', '#ffb7b2', '#ffffff', '#a7c4b5'];
+            star.style.background = colors[Math.floor(Math.random() * colors.length)];
+            document.body.appendChild(star);
+            gsap.to(star, { y: window.innerHeight + 100, rotation: Math.random() * 360, duration: 2 + Math.random() * 2, ease: "power1.in", delay: Math.random() * 0.5, onComplete: () => star.remove() });
+        }
+
+        // --- CORE NAVIGATION ---
+        function enterExperience(theme) {
+            const body = document.body;
+            body.setAttribute('data-theme', theme);
+            let activeContainer;
+            if(theme === 'forest') { forestCont.classList.add('active-scene'); warmCont.classList.remove('active-scene'); activeContainer = forestCont; } 
+            else { warmCont.classList.add('active-scene'); forestCont.classList.remove('active-scene'); activeContainer = warmCont; }
+            gsap.to(landingScreen, { opacity: 0, duration: 0.5, onComplete: () => {
+                landingScreen.style.display = 'none';
+                gsap.to(activeContainer, { opacity: 1, duration: 1 });
+            }});
+        }
+
+        function returnToLanding() {
+            const scenes = document.querySelectorAll('.scene-container');
+            resetGame(); 
+            isGameRunning = false;
+            
+            // --- NEW: STOP MUSIC ---
+            // Stop both iframes by resetting their src attribute
+            document.querySelectorAll('iframe').forEach(iframe => {
+                const tempSrc = iframe.src;
+                iframe.src = tempSrc; 
+            });
+
+            gsap.to(scenes, { opacity: 0, duration: 0.5, onComplete: () => {
+                scenes.forEach(s => s.classList.remove('active-scene'));
+                landingScreen.style.display = 'flex';
+                document.body.removeAttribute('data-theme'); 
+                gsap.to(landingScreen, { opacity: 1, duration: 0.5 });
+            }});
+        }
+
+        function showSlide(theme, index) {
+            if (isTransitioning) return;
+            isTransitioning = true;
+
+            const state = theme === 'forest' ? forestState : warmState;
+            const total = state.totalSlides;
+            
+            const currentSlideEl = document.querySelector(`#${theme}-container .slide.active`);
+            const nextSlideEl = document.getElementById(`${theme}-slide-${index}`);
+
+            // --- NEW: STOP MUSIC IF LEAVING SLIDE 1 ---
+            // Check if we are leaving the music slide (index 1)
+            if (state.currentSlide === 1 && index !== 1) {
+                 const iframe = document.querySelector(`#${theme}-slide-1 iframe`);
+                 if(iframe) {
+                     const tempSrc = iframe.src;
+                     iframe.src = tempSrc; // This stops the audio
+                 }
+            }
+
+            if(currentSlideEl && currentSlideEl !== nextSlideEl) {
+                gsap.to(currentSlideEl, { opacity: 0, y: -10, duration: 0.3, onComplete: () => {
+                    currentSlideEl.classList.remove('active');
+                    gsap.set(currentSlideEl, { y: 0 }); 
+                    if(nextSlideEl) {
+                        nextSlideEl.classList.add('active');
+                        gsap.fromTo(nextSlideEl, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", onComplete: () => {
+                            isTransitioning = false;
+                        }});
+                    } else { isTransitioning = false; }
+                }});
+            } else if (!currentSlideEl && nextSlideEl) {
+                nextSlideEl.classList.add('active');
+                isTransitioning = false;
+            } else {
+                isTransitioning = false;
+            }
+
+            for(let i=0; i<total; i++) {
+                const bar = document.getElementById(`${theme}-bar-${i}`);
+                if(bar) {
+                    if(i < index) { bar.classList.add('completed'); bar.classList.remove('active'); bar.querySelector('.progress-fill').style.width = '100%'; }
+                    else if(i === index) { bar.classList.remove('completed'); bar.classList.add('active'); bar.querySelector('.progress-fill').style.width = '100%'; }
+                    else { bar.classList.remove('completed'); bar.classList.remove('active'); bar.querySelector('.progress-fill').style.width = '0%'; }
+                }
+            }
+            const dashList = document.querySelector(`#${theme}-container .chapter-list`);
+            if(dashList) {
+                const dashItems = dashList.children;
+                for(let i=0; i<dashItems.length; i++) {
+                    if(i===index) dashItems[i].classList.add('active'); else dashItems[i].classList.remove('active');
+                }
+            }
+            state.currentSlide = index;
+
+            // --- GAME LOCK LOGIC ---
+            if(theme === 'warm' && index === 4) {
+                document.getElementById('warm-return-btn').style.display = 'none';
+                document.getElementById('warm-nav-controls').style.display = 'none';
+                document.getElementById('warm-dashboard').style.display = 'none';
+                initFlappyGame();
+            } else if (theme === 'warm' && index === 5) {
+                document.getElementById('warm-return-btn').style.display = 'block';
+                document.getElementById('warm-nav-controls').style.display = 'none'; 
+                document.getElementById('warm-dashboard').style.display = 'flex';
+                isGameRunning = false; 
+            } else {
+                document.getElementById('warm-return-btn').style.display = 'block';
+                document.getElementById('warm-nav-controls').style.display = 'flex';
+                document.getElementById('warm-dashboard').style.display = 'flex';
+                isGameRunning = false; 
+            }
+        }
+
+        function nextSlide(theme) {
+            const state = theme === 'forest' ? forestState : warmState;
+            if(state.currentSlide < state.totalSlides - 1) showSlide(theme, state.currentSlide + 1);
+            else showSlide(theme, 0);
+        }
+
+        function goToSlide(theme, index) { showSlide(theme, index); }
+
+        /* --- FLAPPY BIRD ENGINE --- */
+        const canvas = document.getElementById("flappy-canvas");
+        const ctx = canvas.getContext("2d");
+        const overlay = document.getElementById("game-overlay");
+        const msg = document.querySelector(".game-msg");
+
+        let bird = { x: 50, y: 150, width: 20, height: 20, velocity: 0, gravity: 0.15, jump: -3.5 };
+        let pipes = [];
+        let score = 0;
+        let isGameRunning = false;
+        let isGameOver = false;
+        let frameCount = 0;
+        let animationFrameId;
+
+        const PIPE_WIDTH = 60;
+        const PIPE_GAP = 150; 
+        const PIPE_SPEED = 1.7; 
+
+        function initFlappyGame() {
+            resetGame();
+            overlay.style.display = 'flex';
+            msg.innerHTML = "PRESS SPACE<br>TO JUMP";
+            isGameOver = false;
+            draw();
+        }
+
+        function resetGame() {
+            bird.y = 150;
+            bird.velocity = 0;
+            pipes = [];
+            score = 0;
+            frameCount = 0;
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        function loop() {
+            if(!isGameRunning) return;
+            update();
+            draw();
+            animationFrameId = requestAnimationFrame(loop);
+        }
+
+        function update() {
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            if (frameCount % 150 === 0) {
+                let topHeight = Math.random() * (canvas.height - PIPE_GAP - 100) + 50;
+                pipes.push({ x: canvas.width, topHeight: topHeight, passed: false });
+            }
+
+            for (let i = 0; i < pipes.length; i++) {
+                let p = pipes[i];
+                p.x -= PIPE_SPEED;
+
+                if (bird.x < p.x + PIPE_WIDTH && bird.x + bird.width > p.x && (bird.y < p.topHeight || bird.y + bird.height > p.topHeight + PIPE_GAP)) {
+                    gameOver();
+                }
+
+                if (p.x + PIPE_WIDTH < bird.x && !p.passed) {
+                    score++;
+                    p.passed = true;
+                    if(score >= 20) { // Changed to 20 as requested in prompt, or 30? Prompt says 30 in text but logic was 20. Sticking to 30 based on text.
+                        // Actually, previous prompt said 30 in text. I will align logic to 30.
+                        if (score >= 30) gameWin();
+                    }
+                }
+            }
+
+            if (bird.y + bird.height > canvas.height || bird.y < 0) {
+                gameOver();
+            }
+
+            if (pipes.length > 0 && pipes[0].x < -PIPE_WIDTH) {
+                pipes.shift();
+            }
+
+            frameCount++;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#70c5ce";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#F4C42E";
+            ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(bird.x, bird.y, bird.width, bird.height);
+            ctx.fillStyle = "#73BF2E";
+            for (let i = 0; i < pipes.length; i++) {
+                let p = pipes[i];
+                ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topHeight);
+                ctx.strokeRect(p.x, 0, PIPE_WIDTH, p.topHeight);
+                ctx.fillRect(p.x, p.topHeight + PIPE_GAP, PIPE_WIDTH, canvas.height - (p.topHeight + PIPE_GAP));
+                ctx.strokeRect(p.x, p.topHeight + PIPE_GAP, PIPE_WIDTH, canvas.height - (p.topHeight + PIPE_GAP));
+            }
+            ctx.fillStyle = "white";
+            ctx.font = "20px 'Press Start 2P'";
+            ctx.fillText("Score: " + score, 10, 30);
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            isGameOver = true;
+            cancelAnimationFrame(animationFrameId);
+            overlay.style.display = 'flex';
+            msg.innerHTML = "GAME OVER<br>Score: " + score + "<br><br>PRESS SPACE";
+        }
+
+        function gameWin() {
+            isGameRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            overlay.style.display = 'flex';
+            msg.innerHTML = "UNLOCKED!";
+            setTimeout(() => { nextSlide('warm'); }, 1500);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault(); 
+                if (document.getElementById('warm-slide-4').classList.contains('active')) {
+                    if (!isGameRunning) {
+                        if(score >= 30) return; // Logic check for 30
+                        resetGame();
+                        isGameRunning = true;
+                        overlay.style.display = 'none';
+                        loop();
+                        bird.velocity = bird.jump;
+                    } else {
+                        bird.velocity = bird.jump;
+                    }
+                }
+            }
+        });
+
+        document.getElementById('forest-slide-0').classList.add('active');
+        document.getElementById('warm-slide-0').classList.add('active');
+
+    </script>
+</body>
+</html>
