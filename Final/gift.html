@@ -385,7 +385,7 @@
                 <div class="slide" id="forest-slide-1">
                     <p class="slide-text">Some sadder music that really REALLY REALLY reminds me of us...</p>
                     <div class="spotify-frame">
-                        <iframe data-testid="embed-iframe" style="border-radius:0px" src="https://open.spotify.com/embed/playlist/0Q32V3g42167195843?utm_source=generator&theme=0" width="100%" height="100%" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                        <iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX7qK8ma5wgG1?utm_source=generator" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
                     </div>
                 </div>
                 <div class="slide" id="forest-slide-2">
@@ -465,7 +465,7 @@
                 <div class="slide" id="warm-slide-1">
                     <p class="slide-text">Some Happy music that really REALLY reminds me of you...</p>
                     <div class="spotify-frame">
-                        <iframe data-testid="embed-iframe" style="border-radius:0px" src="https://open.spotify.com/embed/playlist/1545645674894654?utm_source=generator&theme=0" width="100%" height="100%" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+                         <iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfdhgbGU?utm_source=generator" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
                     </div>
                 </div>
                 
@@ -952,8 +952,7 @@
                 if (p.x + PIPE_WIDTH < bird.x && !p.passed) {
                     score++;
                     p.passed = true;
-                    if(score >= 20) { // Changed to 20 as requested in prompt, or 30? Prompt says 30 in text but logic was 20. Sticking to 30 based on text.
-                        // Actually, previous prompt said 30 in text. I will align logic to 30.
+                    if(score >= 30) { 
                         if (score >= 30) gameWin();
                     }
                 }
